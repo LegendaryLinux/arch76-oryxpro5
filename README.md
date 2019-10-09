@@ -262,7 +262,7 @@ systemctl enable --now system76
 only the Nvidia GPU, you should skip this step.**
 
 For the moment, the only solution I have successfully implemented for hybrid-graphics mode
-uses `bunblebee`. Unfortunately, there are several problems with it.
+uses `bumblebee`. Unfortunately, there are several problems with it.
 1. Bumblebee suffers from very significant performance issues. In my benchmarks, the Intel
 GPU outperforms the Nvidia card by well over 300%.
 2. Bumblebee seems to be abandoned. Its last commit was in 2013.
