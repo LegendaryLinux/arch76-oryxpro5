@@ -141,7 +141,7 @@ echo "my-hostname" >> /etc/hostname
 Install the GRUB bootloader, the Nvidia proprietary drivers, and some packages we
 will use later.
 ```bash
-pacman -S grub efibootmgr netctl dialog nvidia vi vim sudo dhcpcd pulseaudio alsa linux-headers
+pacman -S grub efibootmgr netctl dialog nvidia vi vim sudo dhcpcd pulseaudio alsa linux-headers linux-firmware
 ```
 
 Configure the GRUB bootloader.
@@ -321,16 +321,9 @@ If the see the following output in your terminal, the Nvidia card is working pro
 
 **At this point, you're done. Arch is working properly on your laptop (hopefully).**
 
-* I have not yet figured out how to get wireless working. The driver used (`iwlwifi`)
-is well supported and is successfully loaded by `systemd`, but `NetworkManager`
-does not hook it. Interestingly, `wifi-menu` works fine if you boot from the
-installation media. Wired networking works without issue.
-
-* Related to the wireless problem above, there is some weirdness with how Gnome handles
-airplane mode and bluetooth. Bluetooth always appears in an "OFF" state, but attempting
-to turn it on activates airplane mode. This has no effect on wired networking, which
-works in either state. Turning airplane mode off also turns off bluetooth. In neither
-case is bluetooth active.
+* Bluetooth does not seem to work. Toggling the status in the gnome control panel
+will cause the switch to turn blue, but not move to the side. In either case, bluetooth
+does not seem to activate.
 
 * If you use `xfce`, you will notice a fifteen-ish second delay when the Intel GPU
 attempts to render your DM or GUI. There are workarounds for this problem in the Arch
@@ -343,12 +336,7 @@ I recommend against implementing a blacklist solution. If you really like `xfce`
 (like me), fifteen seconds isn't all that bad considering the amount of trouble
 necessary to get Arch working on this system.
 
-* Most of the function toggles on the keyboard work properly, with airplane mode being
-the biggest exception. `dmesg` lists a lot of unknown keys when they are pressed. I'm
-not sure if this issue will ever be resolved, as it would require a port of
-the software from System76.
-
-* I have not yet tested an external display, but I presume it should work because the
+* I have not yet tested an external display, but I presume it will work because the
 Intel GPU driver is well supported, and Xorg is pretty good at handling multiple
 displays these days. I don't expect the Nvidia card to interfere with this operation,
 as it is powered off when not activated by `optirun`.
