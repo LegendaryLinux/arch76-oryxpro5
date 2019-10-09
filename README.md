@@ -395,8 +395,8 @@ if the Nvidia GPU renders the output. This should not be a problem in discrete-g
 but hybrid-graphics mode may get a bit dicey.
 
 * If you decide to try hybrid-graphics mode and decide you want to switch to
-discrete-graphics mode later, all you need to do is uninstall `bumblebee` and reboot. 
-If you then decide you want it back, simply reinstall `bumblebee`. This also passes for
+discrete-graphics mode later, all you need to do is disable `bumblebeed` and reboot. 
+If you then decide you want it back, simply re-enable `bumblebeed`. This also passes for
 a method of switching between high and low power modes, as hybrid-graphics mode uses
 less power.
 
