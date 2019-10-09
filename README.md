@@ -329,6 +329,8 @@ If you see the following output, your GPU is working properly.
 =======================================================
 ```
 
+`435.21` should be replaced with the version of your Nvidia driver.
+
 ## Part 6b: Testing hybrid-graphics mode
 
 If you have chosen to run your system in hybrid graphics mode, you will perform two tests.
@@ -356,7 +358,7 @@ To test the Nvidia card, run the following in a terminal:
 optirun glmark2
 ```
 
-If the see the following output in your terminal, the Nvidia card is working properly:
+If you see the following output in your terminal, the Nvidia card is working properly:
 ```bash
     glmark2 2014.03
 =======================================================
