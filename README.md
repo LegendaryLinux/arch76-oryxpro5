@@ -130,18 +130,37 @@ chroot into the new system.
 arch-chroot /mnt
 ```
 
-At this point, you could set up your locale information, but it varies from user to user
-and isn't actually necessary to carry on. So we skip it for now.
+You'll want to set up your networking and locale information now, as `locale.conf` is required
+for the Grub terminal to run, and a properly configured hosts file is used as part of power
+management by `bumblebee`.
 
 Create your hostname file.
 ```bash
 echo "my-hostname" >> /etc/hostname
 ```
 
+Create your `/etc/hosts` file.
+```bash
+127.0.0.1               localhost
+::1                     localhost
+hostname.localadmin     hostname
+```
+
+Uncomment your preferred locale in `/etc/locale.gen`, then run:
+```bash
+locale-gen
+```
+
+Finally, set your locale in `/etc/locale.conf`.
+```bash
+LANG=en_US.UTF-8
+```
+
 Install the GRUB bootloader, the Nvidia proprietary drivers, and some packages we
 will use later.
 ```bash
 pacman -S grub efibootmgr netctl dialog nvidia vi vim sudo dhcpcd pulseaudio alsa linux-headers linux-firmware
+pacman -S xf86-video-intel mesa mesa-demos
 ```
 
 Configure the GRUB bootloader.
@@ -177,10 +196,7 @@ pacman -S gdm gnome
 systemctl enable --now gdm
 ```
 
-This will launch GDM and present you with a login prompt. **Make sure you use an X session
-to launch the GUI. The Nvidia proprietary driver does not support wayland, and using it
-may cause your screen to turn black, followed shortly by your system locking up.** 
-
+This will launch GDM and present you with a login prompt.
 Once the GUI is loaded, you should set your locale information, or the default Gnome
 terminal will fail to load. Once you have set your locale information, you should
 confirm the Nvidia proprietary driver is present, **but not loaded**, and that the
@@ -226,6 +242,7 @@ useradd myname
 passwd myname
 mkdir /home/myname
 chown myname /home/myname
+gpasswd -a myname wheel
 ```
 
 Installing AUR packages requires use of `makepkg`, which is provided as a part of the
@@ -239,15 +256,26 @@ systemctl enable --now system76-backlight --user
 systemctl enable --now system76
 ```
 
-## Part 5: Installing bumblebee and optirun
+## Part 5: Enabling hybrid-graphics mode (optional)
 
-To allow usage of the Nvidia video card, we need to install `bumblebee` and a few other
-helpful packages. These will allow us to pass command line arguments which will tell
-the system to render the target application using the discrete GPU.
+**Thus far, this guide has been setting up for discrete-graphics mode. If you wish to use
+only the Nvidia GPU, you should skip this step.**
 
-First, we need to install the required packages:
+For the moment, the only solution I have successfully implemented for hybrid-graphics mode
+uses `bunblebee`. Unfortunately, there are several problems with it.
+1. Bumblebee suffers from very significant performance issues. In my benchmarks, the Intel
+GPU outperforms the Nvidia card by well over 300%.
+2. Bumblebee seems to be abandoned. Its last commit was in 2013.
+3. Bumblebee has no support for Vulkan.
+
+In hybrid-graphics mode, the Intel GPU will render everything by default and the
+Nvidia GPU will render applications on demand. To accomplish this, you will install
+`bumblebee`. This will allow us to pass command line arguments which will tell the
+system to render the target application using the discrete GPU.
+
+First, we need to install `bumblebee`:
 ```bash
-pacman -S bumblebee mesa xf86-video-intel mesa-demos 
+pacman -S bumblebee 
 ```
 
 I'm not convinced you need them, but if you would like to support 32-bit applications
@@ -276,12 +304,36 @@ reboot
 
 Once you have rebooted into your GUI of choice, you need to install a GPU benchmark to
 use while testing. For the purposes of this guide, we are not interested in pushing the
-GPU to the limit. We only care that it works properly with `optirun`. For this purpose,
-we will use `glmark2`. It can be found in the AUR
-[here](https://aur.archlinux.org/packages/glmark2/).
+GPU to the limit. We only care that it works properly. For this purpose, we will use
+`glmark2`. It can be found in the AUR [here](https://aur.archlinux.org/packages/glmark2/).
 
-Once `glmark2` is installed, you need to test both the Intel and Nvidia GPUs. You'll
+Once `glmark2` is installed, you can use it to test your GPU rendering. You'll
 know the benchmark is working if a window appears with a spinning 3D rendered object.
+
+## Part 6a: Testing discrete graphics mode
+
+If you have chosen to run your system in discrete graphics mode, testing is very simple.
+In a terminal, run:
+```bash
+glmark2
+```
+
+If you see the following output, your GPU is working properly.
+```bash
+    glmark2 2014.03
+=======================================================
+    OpenGL Information
+    GL_VENDOR:     NVIDIA Corporation
+    GL_RENDERER:   GeForce RTX 2070 with Max-Q Design/PCIe/SSE2
+    GL_VERSION:    4.6.0 NVIDIA 435.21
+=======================================================
+```
+
+## Part 6b: Testing hybrid-graphics mode
+
+If you have chosen to run your system in hybrid graphics mode, you will perform two tests.
+The first ensures the Intel GPU is functioning properly, and the second ensures you can
+invoke the Nvidia GPU at will.
 
 To test the Intel card, run the following command in a terminal:
 ```bash
@@ -336,7 +388,18 @@ I recommend against implementing a blacklist solution. If you really like `xfce`
 (like me), fifteen seconds isn't all that bad considering the amount of trouble
 necessary to get Arch working on this system.
 
-* I have not yet tested an external display, but I presume it will work because the
-Intel GPU driver is well supported, and Xorg is pretty good at handling multiple
-displays these days. I don't expect the Nvidia card to interfere with this operation,
-as it is powered off when not activated by `optirun`.
+* I have not yet tested an external display, but my understanding is it will only function
+if the Nvidia GPU renders the output. This should not be a problem in discrete-graphics mode,
+but hybrid-graphics mode may get a bit dicey.
+
+* If you decide to try hybrid-graphics mode and decide you want to switch to
+discrete-graphics mode later, all you need to do is uninstall `bumblebee` and reboot. 
+If you then decide you want it back, simply reinstall `bumblebee`. This also passes for
+a method of switching between high and low power modes, as hybrid-graphics mode uses
+less power.
+
+* I have been looking into PRIME rendering as a better implementation of hybrid-graphics
+mode. At the moment, it doesn't work quite right. If the `nvidia` module is loaded, the
+system behaves as though it is in discrete-graphics mode. If the `nouveau` module is
+loaded, hybrid-graphics mode works until you invoke the Nvidia GPU, at which point the
+system locks up.
