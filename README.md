@@ -11,11 +11,12 @@ to toggle between GPU usage. Swapping between them requires a reboot.
 
 In order to configure the EFI settings to properly use the RTX card, we need to install
 Pop!_OS. The configuration doesn't matter, but at the time of writing there are two
-versions of it available on [their website](https://system76.com/pop).
+versions of it available on [their website](https://system76.com/pop). Make sure you grab
+the Nvidia version, which will install the proprietary driver.
 
 Once you have it installed and are sitting on the Gnome desktop, follow this procedure:
 
-1. Find and launch the system76-drivers program. Ensure there are no firmware updates
+1. Find and launch the `system76-driver` program. Ensure there are no firmware updates
 waiting to be installed. The option will be greyed out if there are no updates available.
 If there **are** updates available, install them and then reboot.
 
@@ -51,7 +52,7 @@ If all is well, you should see the following output:
 The important thing here is the `nvidia` driver is currently in use. This tells you
 the system is rendering on that card, and outputting through the Intel GPU.
 
-If you see the `nvidia` driver in use, shut down the computer.
+Shut down the computer.
 
 ## Part 2: Installing Arch Linux
 
@@ -110,7 +111,7 @@ Mount the partitions.
 ```bash
 mount /dev/nvme0n1p3 /mnt
 mkdir /mnt/boot
-mount /dev/
+mount /dev/nvme0n1p1 /mnt/boot
 ```
 
 Install the essential packages.
@@ -177,14 +178,13 @@ systemctl enable --now gdm
 ```
 
 This will launch GDM and present you with a login prompt. **Make sure you use an X session
-to launch the GUI. The Nvidia proprietary driver does not support wayland, and your screen
-may turn black, followed shortly by your system locking up.** 
+to launch the GUI. The Nvidia proprietary driver does not support wayland, and using it
+may cause your screen to turn black, followed shortly by your system locking up.** 
 
-Once the GUI is loaded, you
-should set your locale information, or the default Gnome terminal will fail to load.
-Once you have set your locale information, you should confirm the Nvidia proprietary
-driver is present, **but not loaded**, and that the intel driver is present and
- **is loaded**. In a terminal:
+Once the GUI is loaded, you should set your locale information, or the default Gnome
+terminal will fail to load. Once you have set your locale information, you should
+confirm the Nvidia proprietary driver is present, **but not loaded**, and that the
+intel driver is present and **is loaded**. In a terminal:
 ```bash
 lspci -k | grep -A 3 VGA
 ```
@@ -211,8 +211,8 @@ systemctl enable --now NetworkManager
 
 ## Part 4: Installing the System76 proprietary drivers
 
-The Arch Linux community is awesome, and has created several AUR packages which we will
-need to install. They are:
+The Arch Linux community is awesome, and has created several AUR packages which
+need to be installed. They are:
 - [system76-io-dkms](https://aur.archlinux.org/packages/system76-io-dkms/)
 - [system76-dkms](https://aur.archlinux.org/packages/system76-dkms/)
 - [system76-firmware-daemon](https://aur.archlinux.org/packages/system76-firmware-daemon/)
@@ -257,9 +257,14 @@ you'll need to enable the `multilib` repository in `/etc/pacman.conf`.
 pacman -S lib32-virtualgl lib32-nvidia-utils
 ```
 
-Once those packages are installed, we need to enable the `bumblebeed` daemon.
+Once those packages are installed, enable the `bumblebeed` daemon.
 ```bash
 systemctl enable --now bumblebeed
+```
+
+Add your user to the `bumblebee` group.
+```bash
+gpasswd -a myname bumblebee
 ```
 
 From here, restart the system.
@@ -333,7 +338,7 @@ Wiki on the
 [NVIDIA/Troubleshooting](https://wiki.archlinux.org/index.php/NVIDIA/Troubleshooting)
 page, as well as on the [NVIDIA Optimus](https://wiki.archlinux.org/index.php/Optimus)
 page. However, doing so may require blacklisting modules which are necessary for
-`optirun` to function. In the future, there may be a solution to this, but for now
+`optirun` to function. In the future there may be a solution to this, but for now
 I recommend against implementing a blacklist solution. If you really like `xfce`
 (like me), fifteen seconds isn't all that bad considering the amount of trouble
 necessary to get Arch working on this system.
