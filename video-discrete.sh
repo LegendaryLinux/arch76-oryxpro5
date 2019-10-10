@@ -13,7 +13,7 @@ echo "Removing bumblebee if present..."
 if test -f /usr/lib/bumblebeed
 then
 	systemctl disable bumblebeed
-	pacman -R --noconfirm --quiet bumblebee
+	pacman -R --noconfirm bumblebee
 fi
 
 # Ensure the proprietary nvidia driver is installed

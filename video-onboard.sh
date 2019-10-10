@@ -13,14 +13,14 @@ echo "Removing bumblebee if present..."
 if test -f /usr/lib/bumblebeed
 then
 	systemctl disable bumblebeed
-	pacman -R --noconfirm --quiet bumblebee
+	pacman -R --noconfirm bumblebee
 fi
 
 # Ensure the proprietary nvidia driver is not present on the system
 echo "Remove nvidia module if present..."
 if test -f "/lib/modules/$(uname -r)/extramodules/nvidia.ko.gz"
 then
-	pacman -R --noconfirm --quiet nvidia nvidia-utils
+	pacman -R --noconfirm nvidia nvidia-utils
 fi
 
 # Append nouveau.modeset=0 to the kernel parameters
