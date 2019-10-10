@@ -156,11 +156,10 @@ Finally, set your locale in `/etc/locale.conf`.
 LANG=en_US.UTF-8
 ```
 
-Install the GRUB bootloader, the Nvidia proprietary drivers, and some packages we
-will use later.
+Install the GRUB bootloader, the nouveau video drivers, and some packages we will use later.
 ```bash
-pacman -S grub efibootmgr netctl dialog nvidia vi vim sudo dhcpcd pulseaudio alsa linux-headers linux-firmware
-pacman -S xf86-video-intel mesa mesa-demos
+pacman -S grub efibootmgr netctl dialog vi vim sudo dhcpcd pulseaudio alsa linux-headers linux-firmware
+pacman -S xf86-video-intel xf86-video-nouveau mesa mesa-demos
 ```
 
 Configure the GRUB bootloader.
@@ -193,14 +192,18 @@ immediately. For the purposes of this guide, I will be using `gdm` and `gnome`.
 Install and enable a DM and GUI.
 ```bash
 pacman -S gdm gnome
-systemctl enable --now gdm
+systemctl enable gdm
 ```
 
-This will launch GDM and present you with a login prompt.
-Once the GUI is loaded, you should set your locale information, or the default Gnome
-terminal will fail to load. Once you have set your locale information, you should
-confirm the Nvidia proprietary driver is present, **but not loaded**, and that the
-intel driver is present and **is loaded**. In a terminal:
+You'll also want to enable the `NetworkManager` daemon.
+```bash
+systemctl enable --now NetworkManager
+```
+
+You should now set your locale information, or the default Gnome
+terminal will fail to load. Once you have set your locale information, you should confirm
+the `i915` driver for the Intel GPU is loaded and in use. You should also see the `nouveau`
+driver has been loaded, but is not in use:
 ```bash
 lspci -k | grep -A 3 VGA
 ```
@@ -214,16 +217,11 @@ With any luck, your output will look like:
 --
 01:00.0 VGA compatible controller: NVIDIA Corporation TU106M [GeForce RTX 2070 Mobile] (rev a1)
     Subsystem: CLEVO/KAPOK Computer TU106M [GeForce RTX 2070 Mobile]
-    Kernel modules: nouveau, nvidia_drm, nvidia
+    Kernel modules: nouveau
 ```
 
-Ensure the NVIDIA lines do not have a Kernel driver in use. If they do, something went
-wrong, and you probably have to start again from step 1.
-
-You'll also want to enable the `NetworkManager` daemon.
-```bash
-systemctl enable --now NetworkManager
-```
+**Ensure the NVIDIA lines do not have a Kernel driver in use. If they do, something went
+wrong, and you probably have to start again from step 1.**
 
 ## Part 4: Installing the System76 proprietary drivers
 
@@ -249,23 +247,56 @@ Installing AUR packages requires use of `makepkg`, which is provided as a part o
 `base-devel` package we installed earlier. For help using `makepkg`, please refer to
 [the docs](https://wiki.archlinux.org/index.php/AUR#Installing_packages).
 
-Once you have those packages installed, we need to enable three services they provide:
+Once you have those packages installed, we need to enable the three services they provide:
 ```bash
 systemctl enable --now system76-firmware-daemon
 systemctl enable --now system76-backlight --user
 systemctl enable --now system76
 ```
 
-## Part 5: Enabling hybrid-graphics mode (optional)
+## Part 5: Choose and configure a graphics mode
 
-**Thus far, this guide has been setting up for discrete-graphics mode. If you wish to use
-only the Nvidia GPU, you should skip this step.**
+You have three options to choose from in this section:
+1. **onboard-graphics** - Use only the onboard Intel GPU, and keep the Nvidia GPU powered off.
+This option consumes the least amount of power.
 
-For the moment, the only solution I have successfully implemented for hybrid-graphics mode
+2. **discrete-graphics** - Use only the Nvidia GPU to render your display(s). Both the Intel and
+the Nvidia GPUs will be powered on at all times. This gives the best graphical performance,
+but consumes the most power.
+
+3. **hybrid-graphics** - Use the Intel GPU to render everything by default, and selectively
+render applications with the Nvidia GPU. Both GPUs remain powered on at all times, though
+this consumes less power than discrete-graphics mode.
+
+## Part 5a: onboard-graphics mode
+
+To use only the Intel GPU, you need to ensure the Nvidia GPU does not remain powered on.
+The `nouveau` driver supports and will try to use your Nvidia GPU to enable
+[PRIME](https://wiki.archlinux.org/index.php/PRIME) technology. We can prevent this by
+passing an argument to the kernel at boot. You'll need to edit `/boot/grub/grub.cfg` and
+add `nouveau.modeset=0` to your kernel parameters. The line should look something like this:
+```bash
+linux	/vmlinuz-linux root=UUID=e2749517-4300-4735-a203-5ab47b3570d3 rw  loglevel=3 quiet nouveau.modeset=0
+```
+
+## Part 5b: discrete-graphics mode
+
+If you want to use your Nvidia GPU to render everything, the only thing you need to do is
+install the `nvidia` proprietary drivers. They automatically blacklist the `nouveau` module.
+```bash
+pacman -S nvidia nvidia-utils
+```
+
+## Part 5c: hybrid-graphics mode
+
+For the moment, the only working solution for hybrid-graphics mode
 uses `bumblebee`. Unfortunately, there are several problems with it.
+
 1. Bumblebee suffers from very significant performance issues. In my benchmarks, the Intel
 GPU outperforms the Nvidia card by well over 300%.
+
 2. Bumblebee seems to be abandoned. Its last commit was in 2013.
+
 3. Bumblebee has no support for Vulkan.
 
 In hybrid-graphics mode, the Intel GPU will render everything by default and the
@@ -273,19 +304,12 @@ Nvidia GPU will render applications on demand. To accomplish this, you will inst
 `bumblebee`. This will allow us to pass command line arguments which will tell the
 system to render the target application using the discrete GPU.
 
-First, we need to install `bumblebee`:
+First, we need to install `bumblebee` and the `nvidia` drivers:
 ```bash
-pacman -S bumblebee 
+pacman -S bumblebee nvidia nvidia-utils
 ```
 
-I'm not convinced you need them, but if you would like to support 32-bit applications
-through `optirun`, you'll need the 32-bit libraries. To make them available for install,
-you'll need to enable the `multilib` repository in `/etc/pacman.conf`.
-```bash
-pacman -S lib32-virtualgl lib32-nvidia-utils
-```
-
-Once those packages are installed, enable the `bumblebeed` daemon.
+Once `bumblebee` is installed, enable the `bumblebeed` daemon.
 ```bash
 systemctl enable --now bumblebeed
 ```
@@ -295,54 +319,21 @@ Add your user to the `bumblebee` group.
 gpasswd -a myname bumblebee
 ```
 
-From here, restart the system.
-```bash
-reboot
-```
-
 ## Part 6: Testing
 
-Once you have rebooted into your GUI of choice, you need to install a GPU benchmark to
-use while testing. For the purposes of this guide, we are not interested in pushing the
+Once you have rebooted into your GUI of choice, you will want to install a GPU benchmark to
+test 3D rendering. For the purposes of this guide, we are not interested in pushing the
 GPU to the limit. We only care that it works properly. For this purpose, we will use
 `glmark2`. It can be found in the AUR [here](https://aur.archlinux.org/packages/glmark2/).
+You'll know the benchmark is working if a window appears with a spinning 3D rendered object.
 
-Once `glmark2` is installed, you can use it to test your GPU rendering. You'll
-know the benchmark is working if a window appears with a spinning 3D rendered object.
-
-## Part 6a: Testing discrete graphics mode
-
-If you have chosen to run your system in discrete graphics mode, testing is very simple.
+### Testing onboard-graphics and discrete-graphics modes
 In a terminal, run:
 ```bash
 glmark2
 ```
 
-If you see the following output, your GPU is working properly.
-```bash
-    glmark2 2014.03
-=======================================================
-    OpenGL Information
-    GL_VENDOR:     NVIDIA Corporation
-    GL_RENDERER:   GeForce RTX 2070 with Max-Q Design/PCIe/SSE2
-    GL_VERSION:    4.6.0 NVIDIA 435.21
-=======================================================
-```
-
-`435.21` should be replaced with the version of your Nvidia driver.
-
-## Part 6b: Testing hybrid-graphics mode
-
-If you have chosen to run your system in hybrid graphics mode, you will perform two tests.
-The first ensures the Intel GPU is functioning properly, and the second ensures you can
-invoke the Nvidia GPU at will.
-
-To test the Intel card, run the following command in a terminal:
-```bash
-glmark2
-```
-
-If the following appears in your terminal, the Intel card is working properly:
+If you are using onboard-graphics mode, your terminal should output the following:
 ```bash
     glmark2 2014.03
 =======================================================
@@ -353,12 +344,7 @@ If the following appears in your terminal, the Intel card is working properly:
 =======================================================
 ```
 
-To test the Nvidia card, run the following in a terminal:
-```bash
-optirun glmark2
-```
-
-If you see the following output in your terminal, the Nvidia card is working properly:
+If you have chosen to run your system in discrete graphics mode, your output should be:
 ```bash
     glmark2 2014.03
 =======================================================
@@ -369,39 +355,43 @@ If you see the following output in your terminal, the Nvidia card is working pro
 =======================================================
 ```
 
-`435.21` should be replaced with the version of your Nvidia driver.
+Where `435.21` should be replaced with the version of your Nvidia driver.
+
+### Testing hybrid-graphics mode
+
+If you have chosen to run your system in hybrid graphics mode, you need to perform two
+tests. The first test should be the same as the onboard-graphics test above. Run `glmark2`
+in a terminal, and expect the Intel graphics output.
+
+Your second test will ensure the Nvidia GPU can be invoked on command. To test this
+functionality, run the following in a terminal:
+```bash
+optirun glmark2
+```
+
+Your terminal should output the same result as the discrete-graphics test above.
 
 ## Part 7: Final considerations and known issues
 
 **At this point, you're done. Arch is working properly on your laptop (hopefully).**
 
 * Bluetooth does not seem to work. Toggling the status in the gnome control panel
-will cause the switch to turn blue, but not move to the side. In either case, bluetooth
-does not seem to activate.
+will cause the switch to turn blue, but bluetooth does not seem to activate.
 
-* If you use `xfce`, you will notice a fifteen-ish second delay when the Intel GPU
-attempts to render your DM or GUI. There are workarounds for this problem in the Arch
-Wiki on the
-[NVIDIA/Troubleshooting](https://wiki.archlinux.org/index.php/NVIDIA/Troubleshooting)
-page, as well as on the [NVIDIA Optimus](https://wiki.archlinux.org/index.php/Optimus)
-page. However, doing so may require blacklisting modules which are necessary for
-`optirun` to function. In the future there may be a solution to this, but for now
-I recommend against implementing a blacklist solution. If you really like `xfce`
-(like me), fifteen seconds isn't all that bad considering the amount of trouble
-necessary to get Arch working on this system.
-
-* I have not yet tested an external display, but my understanding is it will only function
-if the Nvidia GPU renders the output. This should not be a problem in discrete-graphics mode,
-but hybrid-graphics mode may get a bit dicey.
+* Multiple displays work flawlessly in discrete-graphics mode, but I have not tested them
+under onboard or hybrid-graphics mode. My understanding is the external display will only
+function if the Nvidia GPU renders the output. As onboard and hybrid-graphics modes both
+render everything using the Intel GPU, I expect multiple display functionality to be dicey
+at best.
 
 * If you decide to try hybrid-graphics mode and decide you want to switch to
 discrete-graphics mode later, all you need to do is disable `bumblebeed` and reboot. 
-If you then decide you want it back, simply re-enable `bumblebeed`. This also passes for
-a method of switching between high and low power modes, as hybrid-graphics mode uses
-less power.
+If you then decide you want it back, simply re-enable `bumblebeed`.
 
 * I have been looking into PRIME rendering as a better implementation of hybrid-graphics
 mode. At the moment, it doesn't work quite right. If the `nvidia` module is loaded, the
 system behaves as though it is in discrete-graphics mode. If the `nouveau` module is
-loaded, hybrid-graphics mode works until you invoke the Nvidia GPU, at which point the
-system locks up.
+loaded, hybrid-graphics mode works until you invoke the Nvidia GPU, at which point
+`dmesg` starts spitting out errors, and the system locks up shortly thereafter. I expect
+this is a matter of waiting for the `nouveau` team to further reverse-engineer the `nvidia`
+driver.
