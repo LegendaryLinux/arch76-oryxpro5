@@ -385,9 +385,8 @@ function if the Nvidia GPU renders the output. As onboard and hybrid-graphics mo
 render everything using the Intel GPU, I expect multiple display functionality to be dicey
 at best.
 
-* If you decide to try hybrid-graphics mode and decide you want to switch to
-discrete-graphics mode later, all you need to do is disable `bumblebeed` and reboot. 
-If you then decide you want it back, simply re-enable `bumblebeed`.
+* For your convenience, three files have been included to assist you
+in switching between graphics modes. Mark them as executable and run them as root.
 
 * I have been looking into PRIME rendering as a better implementation of hybrid-graphics
 mode. At the moment, it doesn't work quite right. If the `nvidia` module is loaded, the
