@@ -132,7 +132,7 @@ arch-chroot /mnt
 
 You'll want to set up your networking and locale information now, as `locale.conf` is required
 for the Grub terminal to run, and a properly configured hosts file is used as part of power
-management by `bumblebee`.
+management.
 
 Create your hostname file.
 ```bash
@@ -159,7 +159,7 @@ LANG=en_US.UTF-8
 Install the GRUB bootloader, the nouveau video drivers, and some packages we will use later.
 ```bash
 pacman -S grub efibootmgr netctl dialog vi vim sudo dhcpcd pulseaudio alsa linux-headers linux-firmware
-pacman -S xf86-video-intel xf86-video-nouveau mesa mesa-demos
+pacman -S xf86-video-intel xf86-video-nouveau mesa mesa-demos acpi acpid
 ```
 
 Configure the GRUB bootloader.
@@ -195,9 +195,10 @@ pacman -S gdm gnome
 systemctl enable gdm
 ```
 
-You'll also want to enable the `NetworkManager` daemon.
+You'll also want to enable the `NetworkManager` and `acpid` daemons.
 ```bash
 systemctl enable --now NetworkManager
+systemctl enable --now acpid
 ```
 
 You should now set your locale information, or the default Gnome
