@@ -320,7 +320,26 @@ Add your user to the `bumblebee` group.
 gpasswd -a myname bumblebee
 ```
 
-## Part 6: Testing
+## Part 6: Enabling onboard audio
+The onboard audio does not work out of the box on ArchLinux. It is controlled by a kernel
+module called `snd_hda_intel`. To enable audio and prevent `dmesg` from spitting out
+endless error messages, you'll need to install the appropriate packages and set
+some options to be applied at boot. First, you'll need to install `alsa` and `pulseaudio`.
+```bash
+pacman -S alsa alsa-firmware pulseaudio
+```
+
+You'll then need to apply an option to the kernel driver used to control the onboard
+audio hardware. Create fhe file `/etc/modprobe.d/audio-patch.conf`. It should contain
+the following:
+```bash
+options snd_hda_intel probe_mask=1
+```
+
+To apply this change, you either need to unload and reload the module with `rmmod` and
+`modprobe` respectively, or reboot the system.
+
+## Part 7: Testing
 
 Once you have rebooted into your GUI of choice, you will want to install a GPU benchmark to
 test 3D rendering. For the purposes of this guide, we are not interested in pushing the
@@ -372,18 +391,14 @@ optirun glmark2
 
 Your terminal should output the same result as the discrete-graphics test above.
 
-## Part 7: Final considerations and known issues
+## Part 8: Final considerations and known issues
 
 **At this point, you're done. Arch is working properly on your laptop (hopefully).**
 
 * Bluetooth does not seem to work. Toggling the status in the gnome control panel
-will cause the switch to turn blue, but bluetooth does not seem to activate.
+will cause the switch to turn blue, but that does not seem to matter.
 
-* Multiple displays work flawlessly in discrete-graphics mode, but I have not tested them
-under onboard or hybrid-graphics mode. My understanding is the external display will only
-function if the Nvidia GPU renders the output. As onboard and hybrid-graphics modes both
-render everything using the Intel GPU, I expect multiple display functionality to be dicey
-at best.
+* Multiple displays work only in discrete-graphics mode.
 
 * For your convenience, three files have been included to assist you
 in switching between graphics modes. Mark them as executable and run them as root.
