@@ -398,10 +398,19 @@ Your terminal should output the same result as the discrete-graphics test above.
 * Bluetooth does not seem to work. Toggling the status in the gnome control panel
 will cause the switch to turn blue, but that does not seem to matter.
 
-* Multiple displays work only in discrete-graphics mode.
+* Multiple displays function only in discrete graphics mode. The Nvidia GPU controls
+all the external displays, and so is required for them to operate.
 
 * For your convenience, three files have been included to assist you
 in switching between graphics modes. Mark them as executable and run them as root.
+
+* It does not seem possible to completely power off the Nvidia GPU. Doing so with
+`acpi-call` will cause the system to become immediately unresponsive.
+
+* After two months of usage, it seems like discrete-graphics mode offers the best
+battery life when not performing GPU intensive tasks. As it is not possible to
+power-off the discrete GPU, I suspect it remains in low power mode while the onboard
+GPU handles rendering.
 
 * I have been looking into PRIME rendering as a better implementation of hybrid-graphics
 mode. At the moment, it doesn't work quite right. If the `nvidia` module is loaded, the
