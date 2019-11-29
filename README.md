@@ -258,16 +258,14 @@ systemctl enable --now system76
 ## Part 5: Choose and configure a graphics mode
 
 You have three options to choose from in this section:
-1. **onboard-graphics** - Use only the onboard Intel GPU, and keep the Nvidia GPU powered off.
-This option consumes the least amount of power.
+1. **onboard-graphics** - Use only the onboard Intel GPU to render your display. External
+displays will not function in this mode.
 
-2. **discrete-graphics** - Use only the Nvidia GPU to render your display(s). Both the Intel and
-the Nvidia GPUs will be powered on at all times. This gives the best graphical performance,
-but consumes the most power.
+2. **discrete-graphics** - Use only the Nvidia GPU to render your display(s). This gives
+the best graphical performance.
 
 3. **hybrid-graphics** - Use the Intel GPU to render everything by default, and selectively
-render applications with the Nvidia GPU. Both GPUs remain powered on at all times, though
-this consumes less power than discrete-graphics mode.
+render applications with the Nvidia GPU.
 
 ## Part 5a: onboard-graphics mode
 
@@ -409,8 +407,11 @@ in switching between graphics modes. Mark them as executable and run them as roo
 
 * After two months of usage, it seems like discrete-graphics mode offers the best
 battery life when not performing GPU intensive tasks. As it is not possible to
-power-off the discrete GPU, I suspect it remains in low power mode while the onboard
-GPU handles rendering.
+power-off the discrete GPU, I suspect it remains in low power mode while there are no
+GPU intensive processes running. It occurs to me this is probably because the `nvidia`
+kernel module is loaded and in use, enabling low-power mode. In onboard-graphics mode,
+the Nvidia card does not have a kernel module loaded, and therefore may not be able to
+activate low power mode.
 
 * I have been looking into PRIME rendering as a better implementation of hybrid-graphics
 mode. At the moment, it doesn't work quite right. If the `nvidia` module is loaded, the
