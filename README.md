@@ -159,7 +159,7 @@ LANG=en_US.UTF-8
 Install the GRUB bootloader, the nouveau video drivers, and some packages we will use later.
 ```bash
 pacman -S grub efibootmgr netctl dialog vi vim sudo dhcpcd pulseaudio alsa linux-headers linux-firmware
-pacman -S xf86-video-intel xf86-video-nouveau mesa mesa-demos acpi acpid
+pacman -S xf86-video-intel xf86-video-nouveau mesa mesa-demos acpi acpid dhcpcd
 ```
 
 Configure the GRUB bootloader.
@@ -189,6 +189,11 @@ to work, as well as `ldxm` and `xfce`. I have also found that for whatever reaso
 `xfce` takes about fifteen seconds to render once the user logs in. `gnome` renders
 immediately. For the purposes of this guide, I will be using `gdm` and `gnome`. 
 
+Plug in an ethernet cable and run `dhcpcd` so we can continue downloading packages.
+```bash
+dhcpcd
+```
+
 Install and enable a DM and GUI.
 ```bash
 pacman -S gdm gnome
@@ -201,10 +206,10 @@ systemctl enable --now NetworkManager
 systemctl enable --now acpid
 ```
 
-You should now set your locale information, or the default Gnome
-terminal will fail to load. Once you have set your locale information, you should confirm
-the `i915` driver for the Intel GPU is loaded and in use. You should also see the `nouveau`
-driver has been loaded, but is not in use:
+Reboot the system and log in as root.
+
+You should confirm the `i915` driver for the Intel GPU is loaded and in use.
+You should also see the `nouveau` driver has been loaded, but is not in use:
 ```bash
 lspci -k | grep -A 3 VGA
 ```
@@ -218,11 +223,9 @@ With any luck, your output will look like:
 --
 01:00.0 VGA compatible controller: NVIDIA Corporation TU106M [GeForce RTX 2070 Mobile] (rev a1)
     Subsystem: CLEVO/KAPOK Computer TU106M [GeForce RTX 2070 Mobile]
+    Kernel driver in use: nouveau
     Kernel modules: nouveau
 ```
-
-**Ensure the NVIDIA lines do not have a Kernel driver in use. If they do, something went
-wrong, and you probably have to start again from step 1.**
 
 ## Part 4: Installing the System76 proprietary drivers
 
@@ -231,10 +234,13 @@ need to be installed. They are:
 - [system76-io-dkms](https://aur.archlinux.org/packages/system76-io-dkms/)
 - [system76-dkms](https://aur.archlinux.org/packages/system76-dkms/)
 - [system76-firmware-daemon](https://aur.archlinux.org/packages/system76-firmware-daemon/)
+- [firmware-manager-git](https://aur.archlinux.org/packages/firmware-manager-git/)
+- [system76-acpi-dkms](https://aur.archlinux.org/packages/system76-acpi-dkms/)
 - [system76-driver](https://aur.archlinux.org/packages/system76-driver/)
 
 Arch Linux does not allow the root user to install packages from the AUR, and for good
 reason. You will therefore need to create your user and assign them a home directory.
+Don't forget to use `visudo` to enable users of the `wheel` group to use `sudo`.
 Once you are logged in as your user, you can continue.
 ```bash
 useradd myname
@@ -305,7 +311,7 @@ system to render the target application using the discrete GPU.
 
 First, we need to install `bumblebee` and the `nvidia` drivers:
 ```bash
-pacman -S bumblebee nvidia nvidia-utils
+pacman -S bumblebee nvidia nvidia-utils nvidia-settings
 ```
 
 Once `bumblebee` is installed, enable the `bumblebeed` daemon.
