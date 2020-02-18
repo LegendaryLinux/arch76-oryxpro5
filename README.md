@@ -90,8 +90,14 @@ t, 2, 19
 
 Create your root partition.
 ```bash
-n, 3, enter, enter
+n, 3, enter, +64G
 t, 3, 20
+```
+
+Create the home partition
+```bash
+n, 4, enter, enter
+t, 4, 20
 ```
 
 Save the partition table to disk.
@@ -103,6 +109,7 @@ Format the partitions and activate your swap.
 ```bash
 mkfs.fat -F 32 /dev/nvme0n1p1
 mkfs.ext4 /dev/nvme0n1p3
+mkfs.ext4 /dev/nvme0n1p4
 mkswap /dev/nvme0n1p2
 swapon /dev/nvme0n1p2
 ```
@@ -111,7 +118,9 @@ Mount the partitions.
 ```bash
 mount /dev/nvme0n1p3 /mnt
 mkdir /mnt/boot
+mkdir /mnt/home
 mount /dev/nvme0n1p1 /mnt/boot
+mount /dev/nvme0n1p4 /mnt/home
 ```
 
 Install the essential packages.
@@ -133,6 +142,11 @@ arch-chroot /mnt
 You'll want to set up your networking and locale information now, as `locale.conf` is required
 for the Grub terminal to run, and a properly configured hosts file is used as part of power
 management.
+
+Install an editor.
+```bash
+pacman -S vim
+```
 
 Create your hostname file.
 ```bash
@@ -158,8 +172,8 @@ LANG=en_US.UTF-8
 
 Install the GRUB bootloader, the nouveau video drivers, and some packages we will use later.
 ```bash
-pacman -S grub efibootmgr netctl dialog vi vim sudo dhcpcd pulseaudio alsa linux-headers linux-firmware
-pacman -S xf86-video-intel xf86-video-nouveau mesa mesa-demos acpi acpid dhcpcd
+pacman -S grub efibootmgr netctl dialog vi sudo dhcpcd pulseaudio alsa linux-headers linux-firmware
+pacman -S xf86-video-intel xf86-video-nouveau mesa mesa-demos acpi acpid
 ```
 
 Configure the GRUB bootloader.
@@ -177,6 +191,7 @@ At this point, Arch Linux has been successfully installed. Unmount your partitio
 and reboot the system.
 ```bash
 exit
+umount /dev/nvme0n1p4
 umount /dev/nvme0n1p1
 umount /dev/nvme0n1p3
 reboot
@@ -194,9 +209,9 @@ Plug in an ethernet cable and run `dhcpcd` so we can continue downloading packag
 dhcpcd
 ```
 
-Install and enable a DM and GUI.
+Install a DM and GUI, along with the proprietary Nvidia drivers Enable the DM.
 ```bash
-pacman -S gdm gnome
+pacman -S gdm gnome nvidia nvidia-utils nvidia-settings
 systemctl enable gdm
 ```
 
@@ -334,7 +349,7 @@ pacman -S alsa alsa-firmware pulseaudio
 ```
 
 You'll then need to apply an option to the kernel driver used to control the onboard
-audio hardware. Create fhe file `/etc/modprobe.d/audio-patch.conf`. It should contain
+audio hardware. Create the file `/etc/modprobe.d/audio-patch.conf`. It should contain
 the following:
 ```bash
 options snd_hda_intel probe_mask=1
