@@ -209,9 +209,9 @@ Plug in an ethernet cable and run `dhcpcd` so we can continue downloading packag
 dhcpcd
 ```
 
-Install a DM and GUI, along with the proprietary Nvidia drivers Enable the DM.
+Install a DM and GUI, and enable the DM.
 ```bash
-pacman -S gdm gnome nvidia nvidia-utils nvidia-settings
+pacman -S gdm gnome
 systemctl enable gdm
 ```
 
@@ -223,13 +223,12 @@ systemctl enable --now acpid
 
 Reboot the system and log in as root.
 
-You should confirm the `i915` driver for the Intel GPU is loaded and in use.
-You should also see the `nouveau` driver has been loaded, but is not in use:
+You should confirm the `i915` and `nouveau` drivers are in use.
 ```bash
 lspci -k | grep -A 3 VGA
 ```
 
-With any luck, your output will look like:
+With any luck, your output will look something like:
 ```bash
 00:02.0 VGA compatible controller: Intel Corporation UHD Graphics 630 (Mobile)
     Subsystem: CLEVO/KAPOK Computer UHD Graphics 630 (Mobile)
@@ -286,58 +285,102 @@ displays will not function in this mode.
 the best graphical performance.
 
 3. **hybrid-graphics** - Use the Intel GPU to render everything by default, and selectively
-render applications with the Nvidia GPU.
+render applications with the Nvidia GPU. External displays will not function in this mode.
+
+Whichever option you choose to use, you will first need to install the proprietary nvidia drivers:
+```bash
+sudo pacman -S nvidia nvidia-utils
+```
+
+Along with the following packages from the AUR:
+- [optimus-manager](https://aur.archlinux.org/packages/optimus-manager/)
+- [gdm-prime](https://aur.archlinux.org/packages/gdm-prime/)
+
+`gdm-prime` replaces `gdm` and `libgdm` with packages compatible with `optimus-manager`. 
+
+After the packages are installed, enable the optimus-manager daemon:
+```bash
+systemctl enable optimus-manager
+```
+
+You also need to force Xorg sessions under Gnome, so edit `/etc/gdm/custom.conf` and uncomment
+the following line:
+```
+#WaylandEnable=false
+```
+
+Reboot your system, switch into a TTY, then login as the root user.
 
 ## Part 5a: onboard-graphics mode
 
 To use only the Intel GPU, you need to ensure the Nvidia GPU does not remain powered on.
-The `nouveau` driver supports and will try to use your Nvidia GPU to enable
-[PRIME](https://wiki.archlinux.org/index.php/PRIME) technology. We can prevent this by
-passing an argument to the kernel at boot. You'll need to edit `/boot/grub/grub.cfg` and
-add `nouveau.modeset=0` to your kernel parameters. The line should look something like this:
+Having already entered a TTY and logged in as the root user, we will use `optimus-manager` to 
+ensure the system uses only the intel GPU by issuing the following commands:
 ```bash
-linux	/vmlinuz-linux root=UUID=e2749517-4300-4735-a203-5ab47b3570d3 rw  loglevel=3 quiet nouveau.modeset=0
+optimus-manager --set-startup intel
+optimus-manager --switch intel
+```
+
+Reboot the system, or restart gdm:
+```bash
+systemctl restart gdm
 ```
 
 ## Part 5b: discrete-graphics mode
-
-If you want to use your Nvidia GPU to render everything, the only thing you need to do is
-install the `nvidia` proprietary drivers. They automatically blacklist the `nouveau` module.
+To use only the Nvidia card to render output, switch to a TTY and login as the root user, then
+issue the following commands:
 ```bash
-pacman -S nvidia nvidia-utils
+optimus-manager --set-startup nvidia
+optimus-manager --switch nvidia
+```
+
+You will be presented with several prompts about the effects of using `optimus-manager` to control
+your GPU, and its effects on the GPU's power state. Answering yes to all these prompts will switch
+the system into discrete-graphics mode.
+
+Reboot the system, or restart gdm:
+```bash
+systemctl restart gdm
 ```
 
 ## Part 5c: hybrid-graphics mode
 
-For the moment, the only working solution for hybrid-graphics mode
-uses `bumblebee`. Unfortunately, there are several problems with it.
+`optimus-manager` has support for a hybrid graphics mode. This uses the Intel GPU to render output,
+but leaves the Nvidia GPU available for more graphically intense tasks. More information can be found at
+[Askannz's github](https://github.com/Askannz/optimus-manager/blob/master/README.md).
 
-1. Bumblebee suffers from very significant performance issues. In my benchmarks, the Intel
-GPU outperforms the Nvidia card by well over 300%.
-
-2. Bumblebee seems to be abandoned. Its last commit was in 2013.
-
-3. Bumblebee has no support for Vulkan.
-
-In hybrid-graphics mode, the Intel GPU will render everything by default and the
-Nvidia GPU will render applications on demand. To accomplish this, you will install
-`bumblebee`. This will allow us to pass command line arguments which will tell the
-system to render the target application using the discrete GPU.
-
-First, we need to install `bumblebee` and the `nvidia` drivers:
+Switch to a TTY and login as root, then issue the following commands:
 ```bash
-pacman -S bumblebee nvidia nvidia-utils nvidia-settings
+optimus-manager --set-startup hybrid
+optimus-manager --switch hybrid
 ```
 
-Once `bumblebee` is installed, enable the `bumblebeed` daemon.
+Add the following environment variables to `~/.profile` and `~/.bashrc`:
 ```bash
-systemctl enable --now bumblebeed
+export __NV_PRIME_RENDER_OFFLOAD=1
+export __GLX_VENDOR_LIBRARY_NAME="nvidia"
+export __VK_LAYER_NV_optimus="NVIDIA_only"
 ```
 
-Add your user to the `bumblebee` group.
+**If you ever switch to onboard-graphics mode, you must remove these environment variables or
+programs rendering with OpenGL and Vulkan will not run.**
+
+Reboot the system, or restart gdm:
 ```bash
-gpasswd -a myname bumblebee
+systemctl restart gdm
 ```
+
+## Part 5d: Switching between modes ##
+During normal system operation, you may switch between video modes at will by issuing any of the following
+commands in a terminal. Doing so will log you out of your current session.
+```bash
+optimus-manager --switch intel
+optimus-manager --switch nvidia
+optimus-manager --switch hybrid
+```
+
+**There is a known bug in `gdm` which may cause you to sit at a black screen after switching modes. 
+If this occurs, you can get around it by switching to any TTY, then back to TTY1.**
 
 ## Part 6: Enabling onboard audio
 The onboard audio does not work out of the box on ArchLinux. It is controlled by a kernel
@@ -398,15 +441,9 @@ Where `435.21` should be replaced with the version of your Nvidia driver.
 
 ### Testing hybrid-graphics mode
 
-If you have chosen to run your system in hybrid graphics mode, you need to perform two
-tests. The first test should be the same as the onboard-graphics test above. Run `glmark2`
-in a terminal, and expect the Intel graphics output.
-
-Your second test will ensure the Nvidia GPU can be invoked on command. To test this
-functionality, run the following in a terminal:
-```bash
-optirun glmark2
-```
+If you have chosen to run your system in hybrid-graphics mode, running `glmark2` should
+cause the same output as the discrete-graphics mode, as the Nvidia GPU should be picking
+up any programs rendering with OpenGL or Vulkan.
 
 Your terminal should output the same result as the discrete-graphics test above.
 
@@ -419,13 +456,6 @@ will cause the switch to turn blue, but that does not seem to matter.
 
 * Multiple displays function only in discrete graphics mode. The Nvidia GPU controls
 all the external displays, and so is required for them to operate.
-
-* For your convenience, three files have been included to assist you
-in switching between graphics modes. Mark them as executable and run them as root.
-
-* It does not seem possible to completely power off the Nvidia GPU. Doing so with
-`acpi-call` will cause the system to become immediately unresponsive.
-
 * After two months of usage, it seems like discrete-graphics mode offers the best
 battery life when not performing GPU intensive tasks. As it is not possible to
 power-off the discrete GPU, I suspect it remains in low power mode while there are no
