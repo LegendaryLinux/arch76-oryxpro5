@@ -140,7 +140,7 @@ arch-chroot /mnt
 ```
 
 You'll want to set up your networking and locale information now, as `locale.conf` is required
-for the Grub terminal to run, and a properly configured hosts file is used as part of power
+for the Gnome terminal to run, and a properly configured hosts file is used as part of power
 management.
 
 Install an editor.
@@ -456,18 +456,3 @@ will cause the switch to turn blue, but that does not seem to matter.
 
 * Multiple displays function only in discrete graphics mode. The Nvidia GPU controls
 all the external displays, and so is required for them to operate.
-* After two months of usage, it seems like discrete-graphics mode offers the best
-battery life when not performing GPU intensive tasks. As it is not possible to
-power-off the discrete GPU, I suspect it remains in low power mode while there are no
-GPU intensive processes running. It occurs to me this is probably because the `nvidia`
-kernel module is loaded and in use, enabling low-power mode. In onboard-graphics mode,
-the Nvidia card does not have a kernel module loaded, and therefore may not be able to
-activate low power mode.
-
-* I have been looking into PRIME rendering as a better implementation of hybrid-graphics
-mode. At the moment, it doesn't work quite right. If the `nvidia` module is loaded, the
-system behaves as though it is in discrete-graphics mode. If the `nouveau` module is
-loaded, hybrid-graphics mode works until you invoke the Nvidia GPU, at which point
-`dmesg` starts spitting out errors, and the system locks up shortly thereafter. I expect
-this is a matter of waiting for the `nouveau` team to further reverse-engineer the `nvidia`
-driver.
